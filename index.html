@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delta India Live Volatility Screener</title>
+  <style>
+    :root {
+      --bg: #0b0f17;
+      --surface: #131a26;
+      --surface-2: #1b2434;
+      --border: #253044;
+      --text: #e6edf7;
+      --muted: #8b9bb4;
+      --accent: #3b82f6;
+      --green: #10b981;
+      --red: #ef4444;
+      --amber: #f59e0b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.4;
+      padding: 16px;
+    }
+    .container { max-width: 1360px; margin: 0 auto; }
+    header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; }
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      font-weight: 500;
+      color: var(--text);
+    }
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--amber);
+    }
+    .dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); }
+    .dot.error { background: var(--red); }
+
+    .controls {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .tf-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tf-btn {
+      background: var(--surface-2);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .tf-btn:hover { color: var(--text); border-color: var(--accent); }
+    .tf-btn.active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+    input[type="text"], select {
+      background: var(--bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 0.875rem;
+      outline: none;
+    }
+    input[type="text"]:focus, select:focus { border-color: var(--accent); }
+    .toggle-btn {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 7px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+    .toggle-btn.paused { border-color: var(--amber); color: var(--amber); }
+
+    .progress-wrap {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-left: auto;
+    }
+
+    .table-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow-x: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+      white-space: nowrap;
+    }
+    thead th {
+      text-align: right;
+      padding: 11px 14px;
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+    }
+    thead th:first-child, thead th:last-child { text-align: left; }
+    thead th.sort-active { color: var(--accent); }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    tbody tr:hover { background: var(--surface-2); }
+    tbody td {
+      padding: 10px 14px;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    tbody td:first-child, tbody td:last-child { text-align: left; }
+    .sym { font-weight: 700; color: var(--text); }
+    .pos { color: var(--green); }
+    .neg { color: var(--red); }
+    .vol-hi { color: #60a5fa; font-weight: 600; }
+    .links { display: flex; gap: 6px; }
+    .link-chip {
+      text-decoration: none;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .link-chip:hover { border-color: var(--accent); color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Delta Exchange India — Live Volatility Screener</h1>
+      </div>
+      <div class="status-bar">
+        <span class="badge"><span id="ws-dot" class="dot"></span><span id="ws-status">Connecting...</span></span>
+        <span id="last-update">Updated: --</span>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div class="tf-pills" id="tf-pills"></div>
+      <div class="filter-row">
+        <input type="text" id="search-input" placeholder="Search coin (e.g. BTC, SOL, XRP)..." />
+        <select id="min-vol">
+          <option value="0">All 24h Volume</option>
+          <option value="100000">24h Vol &gt; $100K</option>
+          <option value="1000000" selected>24h Vol &gt; $1M</option>
+          <option value="10000000">24h Vol &gt; $10M</option>
+        </select>
+        <button id="pause-btn" class="toggle-btn">Pause Auto-Sort</button>
+        <span class="progress-wrap" id="backfill-status">Initializing...</span>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-sort="symbol">Symbol</th>
+            <th data-sort="price">Last Price</th>
+            <th data-sort="rangePct" class="sort-active">Range % ▼</th>
+            <th data-sort="atrPct">ATR(14) %</th>
+            <th data-sort="changePct">Net Chg %</th>
+            <th data-sort="spreadPct">Spread %</th>
+            <th data-sort="turnover24h">24h Vol (USD)</th>
+            <th>Open Chart</th>
+          </tr>
+        </thead>
+        <tbody id="screener-body">
+          <tr><td colspan="8" style="text-align:center; padding:24px; color:var(--muted);">Loading Delta Exchange India contracts...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    const TIMEFRAMES = [
+      { label: "5m", mins: 5 },
+      { label: "15m", mins: 15 },
+      { label: "30m", mins: 30 },
+      { label: "45m", mins: 45 },
+      { label: "1h", mins: 60 },
+      { label: "4h", mins: 240 },
+      { label: "6h", mins: 360 },
+      { label: "8h", mins: 480 },
+      { label: "12h", mins: 720 },
+      { label: "24h", mins: 1440 }
+    ];
+
+    let activeMins = 5;
+    let sortKey = "rangePct";
+    let sortDir = -1;
+    let autoSortPaused = false;
+    let frozenOrder = [];
+
+    // Per-symbol state: { symbol, bars: [{time, open, high, low, close, volume}], price, turnover24h, spreadPct }
+    const market = new Map();
+
+    // Render timeframe buttons
+    const tfContainer = document.getElementById("tf-pills");
+    TIMEFRAMES.forEach((tf) => {
+      const btn = document.createElement("button");
+      btn.className = "tf-btn" + (tf.mins === activeMins ? " active" : "");
+      btn.textContent = tf.label;
+      btn.onclick = () => {
+        activeMins = tf.mins;
+        document.querySelectorAll(".tf-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        renderTable();
+      };
+      tfContainer.appendChild(btn);
+    });
+
+    // Sort headers
+    document.querySelectorAll("thead th[data-sort]").forEach((th) => {
+      th.onclick = () => {
+        const key = th.dataset.sort;
+        if (sortKey === key) {
+          sortDir *= -1;
+        } else {
+          sortKey = key;
+          sortDir = key === "symbol" ? 1 : -1;
+        }
+        document.querySelectorAll("thead th").forEach((h) => {
+          h.classList.remove("sort-active");
+          h.textContent = h.textContent.replace(/ [▲▼]$/, "");
+        });
+        th.classList.add("sort-active");
+        th.textContent += sortDir === -1 ? " ▼" : " ▲";
+        renderTable();
+      };
+    });
+
+    // Pause auto-sort
+    const pauseBtn = document.getElementById("pause-btn");
+    pauseBtn.onclick = () => {
+      autoSortPaused = !autoSortPaused;
+      pauseBtn.classList.toggle("paused", autoSortPaused);
+      pauseBtn.textContent = autoSortPaused ? "Resume Auto-Sort" : "Pause Auto-Sort";
+    };
+
+    document.getElementById("search-input").oninput = renderTable;
+    document.getElementById("min-vol").onchange = renderTable;
+
+    function computeMetrics(state, mins) {
+      const bars = state.bars;
+      if (!bars || bars.length === 0) {
+        return { rangePct: 0, atrPct: 0, changePct: 0 };
+      }
+      const slice = bars.slice(-mins);
+      let hi = -Infinity;
+      let lo = Infinity;
+      for (const b of slice) {
+        if (b.high > hi) hi = b.high;
+        if (b.low < lo) lo = b.low;
+      }
+      const firstOpen = slice[0].open || slice[0].close;
+      const lastClose = state.price || slice[slice.length - 1].close;
+      const rangePct = lo > 0 ? ((hi - lo) / lo) * 100 : 0;
+      const changePct = firstOpen > 0 ? ((lastClose - firstOpen) / firstOpen) * 100 : 0;
+
+      // 14-period ATR on 1m bars within window (or up to last 15 bars)
+      const atrBars = bars.slice(-Math.max(15, Math.min(mins, 60)));
+      let trSum = 0;
+      let trCount = 0;
+      for (let i = 1; i < atrBars.length; i++) {
+        const cur = atrBars[i];
+        const prevClose = atrBars[i - 1].close;
+        const tr = Math.max(
+          cur.high - cur.low,
+          Math.abs(cur.high - prevClose),
+          Math.abs(cur.low - prevClose)
+        );
+        trSum += tr;
+        trCount++;
+      }
+      const atr = trCount > 0 ? trSum / trCount : 0;
+      const atrPct = lastClose > 0 ? (atr / lastClose) * 100 : 0;
+
+      return { rangePct, atrPct, changePct };
+    }
+
+    function formatPrice(p) {
+      if (!p) return "--";
+      if (p >= 1000) return p.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      if (p >= 1) return p.toFixed(4);
+      return p.toFixed(6);
+    }
+
+    function formatVol(v) {
+      if (!v) return "$0";
+      if (v >= 1e9) return "$" + (v / 1e9).toFixed(2) + "B";
+      if (v >= 1e6) return "$" + (v / 1e6).toFixed(2) + "M";
+      if (v >= 1e3) return "$" + (v / 1e3).toFixed(1) + "K";
+      return "$" + v.toFixed(0);
+    }
+
+    function renderTable() {
+      const search = document.getElementById("search-input").value.trim().toUpperCase();
+      const minVol = Number(document.getElementById("min-vol").value || 0);
+      const rows = [];
+
+      for (const state of market.values()) {
+        if (search && !state.symbol.includes(search)) continue;
+        if ((state.turnover24h || 0) < minVol) continue;
+        const m = computeMetrics(state, activeMins);
+        rows.push({
+          symbol: state.symbol,
+          price: state.price || 0,
+          rangePct: m.rangePct,
+          atrPct: m.atrPct,
+          changePct: m.changePct,
+          spreadPct: state.spreadPct || 0,
+          turnover24h: state.turnover24h || 0
+        });
+      }
+
+      if (!autoSortPaused || frozenOrder.length === 0) {
+        rows.sort((a, b) => {
+          if (sortKey === "symbol") return a.symbol.localeCompare(b.symbol) * sortDir;
+          return ((a[sortKey] || 0) - (b[sortKey] || 0)) * sortDir;
+        });
+        frozenOrder = rows.map((r) => r.symbol);
+      } else {
+        const orderMap = new Map(frozenOrder.map((s, idx) => [s, idx]));
+        rows.sort((a, b) => (orderMap.get(a.symbol) ?? 9999) - (orderMap.get(b.symbol) ?? 9999));
+      }
+
+      const tbody = document.getElementById("screener-body");
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:24px; color:var(--muted);">No matching coins found. Try lowering the 24h Volume filter.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map((r) => {
+        const chgClass = r.changePct >= 0 ? "pos" : "neg";
+        const chgSign = r.changePct >= 0 ? "+" : "";
+        return `
+          <tr>
+            <td class="sym">${r.symbol}</td>
+            <td>$${formatPrice(r.price)}</td>
+            <td class="vol-hi">${r.rangePct.toFixed(2)}%</td>
+            <td>${r.atrPct.toFixed(3)}%</td>
+            <td class="${chgClass}">${chgSign}${r.changePct.toFixed(2)}%</td>
+            <td>${r.spreadPct.toFixed(3)}%</td>
+            <td>${formatVol(r.turnover24h)}</td>
+            <td>
+              <div class="links">
+                <a class="link-chip" href="https://www.tradingview.com/chart/?symbol=DELTA:${r.symbol}.P" target="_blank" rel="noopener">TradingView</a>
+                <a class="link-chip" href="https://www.delta.exchange/app/futures/trade/${r.symbol}" target="_blank" rel="noopener">Delta</a>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join("");
+
+      document.getElementById("last-update").textContent = "Updated: " + new Date().toLocaleTimeString();
+    }
+
+    function connectWebSocket(symbols) {
+      const dot = document.getElementById("ws-dot");
+      const status = document.getElementById("ws-status");
+      const ws = new WebSocket("wss://socket.india.delta.exchange");
+
+      let pingTimer = null;
+
+      ws.onopen = () => {
+        dot.className = "dot live";
+        status.textContent = `Live WS (${symbols.length} pairs)`;
+        // Subscribe in chunks of 50 symbols
+        for (let i = 0; i < symbols.length; i += 50) {
+          const chunk = symbols.slice(i, i + 50);
+          ws.send(JSON.stringify({
+            type: "subscribe",
+            payload: { channels: [{ name: "v2/ticker", symbols: chunk }] }
+          }));
+        }
+        pingTimer = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 25000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          if (msg.type !== "v2/ticker" || !msg.symbol) return;
+          const state = market.get(msg.symbol);
+          if (!state) return;
+
+          const price = parseFloat(msg.close || msg.mark_price || msg.spot_price || 0);
+          if (!price) return;
+
+          state.price = price;
+          state.turnover24h = parseFloat(msg.turnover_usd || state.turnover24h || 0);
+
+          const bid = parseFloat(msg.quotes?.best_bid || 0);
+          const ask = parseFloat(msg.quotes?.best_ask || 0);
+          if (bid > 0 && ask > 0) {
+            const mid = (bid + ask) / 2;
+            state.spreadPct = ((ask - bid) / mid) * 100;
+          }
+
+          const nowMin = Math.floor(Date.now() / 60000) * 60;
+          const bars = state.bars;
+          if (bars.length > 0 && bars[bars.length - 1].time === nowMin) {
+            const last = bars[bars.length - 1];
+            if (price > last.high) last.high = price;
+            if (price < last.low) last.low = price;
+            last.close = price;
+          } else {
+            bars.push({ time: nowMin, open: price, high: price, low: price, close: price, volume: 0 });
+            if (bars.length > 1445) bars.shift();
+          }
+        } catch (_) {}
+      };
+
+      ws.onclose = () => {
+        clearInterval(pingTimer);
+        dot.className = "dot error";
+        status.textContent = "Reconnecting...";
+        setTimeout(() => connectWebSocket(symbols), 3000);
+      };
+
+      ws.onerror = () => ws.close();
+    }
+
+    async function init() {
+      const backfillEl = document.getElementById("backfill-status");
+      try {
+        const prodRes = await fetch("/api/products");
+        const prodJson = await prodRes.json();
+        const products = prodJson.result || [];
+
+        products.forEach((p) => {
+          market.set(p.symbol, { symbol: p.symbol, bars: [], price: 0, turnover24h: 0, spreadPct: 0 });
+        });
+
+        const symbols = products.map((p) => p.symbol);
+        connectWebSocket(symbols);
+
+        // Backfill 24h 1m candles in batches of 6
+        let done = 0;
+        const batchSize = 6;
+        for (let i = 0; i < symbols.length; i += batchSize) {
+          const batch = symbols.slice(i, i + batchSize);
+          await Promise.all(batch.map(async (sym) => {
+            try {
+              const res = await fetch(`/api/candles?symbol=${encodeURIComponent(sym)}`);
+              const data = await res.json();
+              const state = market.get(sym);
+              if (state && Array.isArray(data.result) && data.result.length > 0) {
+                state.bars = data.result;
+                if (!state.price) state.price = data.result[data.result.length - 1].close;
+              }
+            } catch (_) {}
+            done++;
+            backfillEl.textContent = `24h History: ${done}/${symbols.length}`;
+          }));
+        }
+        backfillEl.textContent = `Ready (${symbols.length} perpetuals)`;
+      } catch (err) {
+        backfillEl.textContent = "Error loading products";
+      }
+
+      // Per-second UI refresh
+      setInterval(renderTable, 1000);
+      renderTable();
+    }
+
+    init();
+  </script>
+</body>
+</html>
